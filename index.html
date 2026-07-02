@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>桌面便签</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <div class="app-bg" id="app-bg"></div>
+    <div class="app-content">
+    <header class="titlebar" id="titlebar">
+      <div class="title-left">
+        <span class="logo"><img src="build/tray.png" alt="" class="logo-img"></span>
+        <span class="title-text">便签</span>
+      </div>
+      <div class="title-actions">
+        <button class="icon-btn" id="btn-pin" title="置顶">📌</button>
+        <button class="icon-btn" id="btn-hide" title="隐藏到边缘（拖到屏幕侧边也可自动隐藏）">◀</button>
+        <button class="icon-btn" id="btn-min" title="最小化">─</button>
+        <button class="icon-btn close" id="btn-close" title="关闭到托盘">✕</button>
+      </div>
+    </header>
+    <div class="tabs-bar">
+      <div class="tabs" id="tabs"></div>
+      <button class="tab-add" id="btn-add-tab" title="添加分类">+</button>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="search-input" class="search-input" placeholder="搜索当前分类..." spellcheck="false">
+      <span class="search-count" id="search-count"></span>
+      <button class="search-nav" id="search-prev" title="上一个">↑</button>
+      <button class="search-nav" id="search-next" title="下一个">↓</button>
+    </div>
+    <div class="format-bar">
+      <button class="fmt-btn" data-cmd="formatBlock" data-value="h1" title="标题1">H1</button>
+      <button class="fmt-btn" data-cmd="formatBlock" data-value="h2" title="标题2">H2</button>
+      <button class="fmt-btn" data-cmd="formatBlock" data-value="p" title="正文">T</button>
+      <span class="fmt-sep"></span>
+      <button class="fmt-btn" data-cmd="bold" title="加粗"><b>B</b></button>
+      <button class="fmt-btn" data-cmd="italic" title="斜体"><i>I</i></button>
+      <button class="fmt-btn" data-cmd="underline" title="下划线"><u>U</u></button>
+      <button class="fmt-btn" data-cmd="strikeThrough" title="删除线"><s>S</s></button>
+      <span class="fmt-sep"></span>
+      <button class="fmt-btn" data-cmd="insertUnorderedList" title="无序列表">•</button>
+      <button class="fmt-btn" data-cmd="insertOrderedList" title="有序列表">1.</button>
+      <button class="fmt-btn" data-cmd="removeFormat" title="清除格式">⌫</button>
+    </div>
+    <div class="editor-wrap">
+      <div id="editor" class="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-placeholder="在此记录内容..."></div>
+    </div>
+    <footer class="toolbar">
+      <div class="opacity-control">
+        <span class="tool-label">透明度</span>
+        <input type="range" id="opacity" min="0" max="1" step="0.02" value="0.08" title="仅背景变透明，文字始终清晰">
+        <span class="opacity-value" id="opacity-value">8%</span>
+      </div>
+      <div class="status" id="status">已保存</div>
+    </footer>
+    </div>
+    <div class="edge-tab-inline" id="edge-tab-inline" title="拖动调整位置，单击展开"><img src="build/tray.png" alt="" class="edge-icon-img"></div>
+    <div class="dialog-overlay hidden" id="dialog-overlay">
+      <div class="dialog-box">
+        <div class="dialog-title" id="dialog-title"></div>
+        <input type="text" class="dialog-input hidden" id="dialog-input" maxlength="20">
+        <div class="dialog-message hidden" id="dialog-message"></div>
+        <div class="dialog-actions">
+          <button class="dialog-btn" id="dialog-cancel">取消</button>
+          <button class="dialog-btn primary" id="dialog-ok">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>
