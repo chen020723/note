@@ -162,27 +162,122 @@ function triggerSave() {
   saveTimer = setTimeout(saveNotes, 400);
 }
 
-function execFormat(cmd, value = null) {
+function saveSelection() {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount || !editor.contains(sel.anchorNode)) return;
+  savedSelection = sel.getRangeAt(0).cloneRange();
+}
+
+function restoreSelection() {
+  if (!savedSelection) return;
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(savedSelection);
+}
+
+let savedSelection = null;
+
+function getBlockElement() {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return null;
+  let node = sel.anchorNode;
+  if (!editor.contains(node)) return null;
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+  while (node && node !== editor) {
+    const tag = node.tagName?.toLowerCase();
+    if (['h1', 'h2', 'h3', 'p', 'li', 'div'].includes(tag)) {
+      if (tag === 'div' && node.parentElement === editor) return node;
+      if (tag !== 'div') return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
+function getBlockTag() {
+  const el = getBlockElement();
+  if (!el) return 'p';
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'li') {
+    const listTag = el.parentElement?.tagName.toLowerCase();
+    if (listTag === 'ul') return 'ul';
+    if (listTag === 'ol') return 'ol';
+  }
+  return tag === 'div' ? 'p' : tag;
+}
+
+function isFormatActive(cmd, value) {
+  if (cmd === 'formatBlock' && value) {
+    return getBlockTag() === value.toLowerCase();
+  }
+  if (cmd === 'insertUnorderedList' || cmd === 'insertOrderedList') {
+    return document.queryCommandState(cmd);
+  }
+  if (['bold', 'italic', 'underline', 'strikeThrough'].includes(cmd)) {
+    return document.queryCommandState(cmd);
+  }
+  return false;
+}
+
+function updateFormatState() {
+  document.querySelectorAll('.fmt-btn').forEach(btn => {
+    const { cmd, value } = btn.dataset;
+    btn.classList.toggle('active', isFormatActive(cmd, value));
+  });
+}
+
+function applyFormat(cmd, value = null) {
   editor.focus();
-  document.execCommand(cmd, false, value);
+  restoreSelection();
+
+  if (cmd === 'formatBlock') {
+    const tag = (value || 'p').toLowerCase();
+    const current = getBlockTag();
+    if (tag === 'p') {
+      document.execCommand('formatBlock', false, 'p');
+    } else if (current === tag) {
+      document.execCommand('formatBlock', false, 'p');
+    } else {
+      document.execCommand('formatBlock', false, tag);
+    }
+  } else if (cmd === 'removeFormat') {
+    document.execCommand('removeFormat', false, null);
+    document.execCommand('formatBlock', false, 'p');
+  } else {
+    document.execCommand(cmd, false, null);
+  }
+
+  updateFormatState();
   triggerSave();
 }
 
 function bindFormatBar() {
   document.querySelectorAll('.fmt-btn').forEach(btn => {
-    btn.addEventListener('mousedown', (e) => e.preventDefault());
-    btn.addEventListener('click', () => {
-      const cmd = btn.dataset.cmd;
-      const value = btn.dataset.value || null;
-      execFormat(cmd, value);
+    btn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      saveSelection();
     });
+    btn.addEventListener('click', () => {
+      applyFormat(btn.dataset.cmd, btn.dataset.value || null);
+    });
+  });
+
+  editor.addEventListener('keyup', updateFormatState);
+  editor.addEventListener('mouseup', updateFormatState);
+  editor.addEventListener('focus', updateFormatState);
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel?.anchorNode && editor.contains(sel.anchorNode)) {
+      updateFormatState();
+    }
   });
 
   editor.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'b') { e.preventDefault(); execFormat('bold'); }
-      if (e.key === 'i') { e.preventDefault(); execFormat('italic'); }
-      if (e.key === 'u') { e.preventDefault(); execFormat('underline'); }
+      if (e.key === 'b') { e.preventDefault(); applyFormat('bold'); }
+      if (e.key === 'i') { e.preventDefault(); applyFormat('italic'); }
+      if (e.key === 'u') { e.preventDefault(); applyFormat('underline'); }
     }
   });
 }
@@ -191,6 +286,7 @@ function loadEditorContent() {
   const notes = settings.notes || {};
   setEditorHtml(notes[activeTab] || '');
   resetSearch();
+  updateFormatState();
 }
 
 function bindEvents() {

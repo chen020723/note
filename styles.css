@@ -378,6 +378,12 @@ body {
   color: var(--accent);
 }
 
+.fmt-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(232, 168, 73, 0.35);
+}
+
 .fmt-sep {
   width: 1px;
   height: 14px;
