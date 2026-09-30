@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>桌面便签</title>
   <link rel="stylesheet" href="styles.css">
@@ -16,6 +17,7 @@
         <span class="title-text">便签</span>
       </div>
       <div class="title-actions">
+        <button class="icon-btn" id="btn-theme" title="切换主题">🎨</button>
         <button class="icon-btn" id="btn-pin" title="置顶">📌</button>
         <button class="icon-btn" id="btn-hide" title="隐藏到边缘（拖到屏幕侧边也可自动隐藏）">◀</button>
         <button class="icon-btn" id="btn-min" title="最小化">─</button>
@@ -55,7 +57,10 @@
         <input type="range" id="opacity" min="0" max="1" step="0.02" value="0.08" title="仅背景变透明，文字始终清晰">
         <span class="opacity-value" id="opacity-value">8%</span>
       </div>
-      <div class="status" id="status">已保存</div>
+      <div class="footer-right">
+        <span class="char-count" id="char-count"></span>
+        <span class="status" id="status">已保存</span>
+      </div>
     </footer>
     </div>
     <div class="edge-tab-inline" id="edge-tab-inline" title="拖动调整位置，单击展开"><img src="build/tray.png" alt="" class="edge-icon-img"></div>

@@ -503,8 +503,6 @@ body {
   outline: none;
 }
 
-.password-hint.hidden { display: none; }
-
 .toolbar {
   display: flex;
   align-items: center;
@@ -568,6 +566,21 @@ body {
   color: var(--accent);
 }
 
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.char-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  text-shadow: var(--text-shadow);
+  white-space: nowrap;
+}
+
 .app.collapsed .app-bg,
 .app.collapsed .app-content {
   display: none;
@@ -602,30 +615,6 @@ body {
 .app.collapsed.left-edge .search-bar {
   display: none;
 }
-
-.edge-tab {
-  position: fixed;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 72px;
-  background: var(--accent);
-  border-radius: 10px 0 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
-  z-index: 9999;
-  transition: width 0.2s;
-}
-
-.edge-tab:hover { width: 36px; }
-.edge-tab.hidden { display: none; }
-.edge-tab.left { right: auto; left: 0; border-radius: 0 10px 10px 0; }
-
-.edge-icon { font-size: 14px; }
 
 .dialog-overlay {
   position: fixed;

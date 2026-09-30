@@ -5,12 +5,19 @@ let isPinned = true;
 let searchMatches = [];
 let searchIndex = -1;
 
+const THEMES = ['warm', 'cool', 'green'];
+const THEME_LABELS = { warm: '暖色', cool: '冷色', green: '绿色' };
+// 粘贴/加载时只保留这些基础排版标签，其余剥离
+const ALLOWED_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DEL', 'H1', 'H2', 'H3', 'P', 'DIV', 'BR', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'SPAN']);
+const DROP_TAGS = new Set(['SCRIPT', 'STYLE', 'META', 'LINK', 'TITLE', 'IFRAME', 'OBJECT', 'TEMPLATE', 'AUDIO', 'VIDEO', 'IMG']);
+
 const app = document.getElementById('app');
 const tabsEl = document.getElementById('tabs');
 const editor = document.getElementById('editor');
 const opacitySlider = document.getElementById('opacity');
 const opacityValue = document.getElementById('opacity-value');
 const statusEl = document.getElementById('status');
+const charCountEl = document.getElementById('char-count');
 const btnPin = document.getElementById('btn-pin');
 const searchInput = document.getElementById('search-input');
 const searchCount = document.getElementById('search-count');
@@ -88,6 +95,7 @@ async function init() {
   applyBgOpacity(parseFloat(settings.opacity));
   btnPin.classList.toggle('active', isPinned);
   app.classList.add(`theme-${settings.theme || 'warm'}`);
+  updateThemeButton();
 
   renderTabs();
   loadEditorContent();
@@ -151,15 +159,48 @@ function setEditorHtml(content) {
       .replace(/>/g, '&gt;')
       .replace(/\n/g, '<br>');
   } else {
-    editor.innerHTML = content;
+    editor.innerHTML = sanitizeHtml(content);
   }
 }
 
+function sanitizeHtml(html) {
+  const tpl = document.createElement('template'); // template 内容是惰性的，脚本不会执行、图片不会加载
+  tpl.innerHTML = html;
+  const out = document.createElement('div');
+  cleanChildren(tpl.content, out);
+  return out.innerHTML;
+}
+
+function cleanChildren(src, dest) {
+  Array.from(src.childNodes).forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      dest.appendChild(document.createTextNode(node.textContent));
+      return;
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName;
+    if (DROP_TAGS.has(tag)) return;
+    if (ALLOWED_TAGS.has(tag)) {
+      const el = document.createElement(tag);
+      dest.appendChild(el);
+      cleanChildren(node, el);
+    } else {
+      cleanChildren(node, dest); // 未知标签：剥掉外壳，只保留里面的文字
+    }
+  });
+}
+
 function triggerSave() {
+  updateCharCount();
   clearTimeout(saveTimer);
   statusEl.textContent = '保存中...';
   statusEl.classList.remove('saved');
   saveTimer = setTimeout(saveNotes, 400);
+}
+
+function updateCharCount() {
+  const text = getEditorPlainText().replace(/\s+$/, '');
+  charCountEl.textContent = text ? `${text.length} 字` : '';
 }
 
 function saveSelection() {
@@ -286,11 +327,56 @@ function loadEditorContent() {
   const notes = settings.notes || {};
   setEditorHtml(notes[activeTab] || '');
   resetSearch();
+  if (searchInput.value.trim()) runSearch(true);
   updateFormatState();
+  updateCharCount();
 }
 
 function bindEvents() {
   editor.addEventListener('input', triggerSave);
+
+  // 粘贴净化：网页富文本只保留基础排版，杜绝脚本/事件属性/图片
+  editor.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
+    if (html) {
+      document.execCommand('insertHTML', false, sanitizeHtml(html));
+    } else if (text) {
+      const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      document.execCommand('insertHTML', false, esc.replace(/\r?\n/g, '<br>'));
+    }
+    triggerSave();
+  });
+
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const inList = document.queryCommandState('insertUnorderedList')
+        || document.queryCommandState('insertOrderedList');
+      if (inList) {
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+      } else if (!e.shiftKey) {
+        document.execCommand('insertHTML', false, '&nbsp;&nbsp;');
+      }
+      triggerSave();
+    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      clearTimeout(saveTimer);
+      saveNotes();
+    }
+  });
+
+  document.getElementById('btn-theme').addEventListener('click', async () => {
+    const current = THEMES.includes(settings.theme) ? settings.theme : 'warm';
+    const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+    settings.theme = next;
+    THEMES.forEach(t => app.classList.remove(`theme-${t}`));
+    app.classList.add(`theme-${next}`);
+    updateThemeButton();
+    applyBgOpacity(1 - parseFloat(opacitySlider.value));
+    await window.api.saveSettings({ theme: next });
+  });
 
   opacitySlider.addEventListener('input', (e) => {
     const transparency = parseFloat(e.target.value);
@@ -403,8 +489,6 @@ function highlightMatch() {
   searchCount.textContent = `${searchIndex + 1}/${searchMatches.length}`;
 }
 
-function scrollToSelection() {}
-
 function gotoNextMatch() {
   if (!searchMatches.length) return;
   searchIndex = (searchIndex + 1) % searchMatches.length;
@@ -476,6 +560,12 @@ function updateOpacityLabel(transparency) {
   opacityValue.textContent = `${Math.round(transparency * 100)}%`;
 }
 
+function updateThemeButton() {
+  const btn = document.getElementById('btn-theme');
+  const theme = THEMES.includes(settings.theme) ? settings.theme : 'warm';
+  btn.title = `主题：${THEME_LABELS[theme]}（点击切换）`;
+}
+
 function setCollapsed(collapsed, edge = 'right') {
   app.classList.toggle('collapsed', collapsed);
   app.classList.toggle('left-edge', collapsed && edge === 'left');
@@ -489,6 +579,15 @@ let edgeDrag = null;
 
 function bindEdgeDrag() {
   const edgeTab = document.getElementById('edge-tab-inline');
+  let pendingY = null;
+  let rafId = 0;
+
+  const flushMove = () => {
+    rafId = 0;
+    if (pendingY == null) return;
+    window.api.setCollapsedPosition(pendingY);
+    pendingY = null;
+  };
 
   edgeTab.addEventListener('mousedown', async (e) => {
     if (e.button !== 0 || !app.classList.contains('collapsed')) return;
@@ -499,6 +598,7 @@ function bindEdgeDrag() {
       startWindowY: bounds.y,
       moved: false
     };
+    pendingY = null;
   });
 
   document.addEventListener('mousemove', (e) => {
@@ -506,7 +606,8 @@ function bindEdgeDrag() {
     const dy = e.screenY - edgeDrag.startScreenY;
     if (Math.abs(dy) > 3) edgeDrag.moved = true;
     if (edgeDrag.moved) {
-      window.api.setCollapsedPosition(edgeDrag.startWindowY + dy);
+      pendingY = edgeDrag.startWindowY + dy;
+      if (!rafId) rafId = requestAnimationFrame(flushMove);
     }
   });
 
@@ -514,6 +615,8 @@ function bindEdgeDrag() {
     if (!edgeDrag) return;
     const wasDrag = edgeDrag.moved;
     edgeDrag = null;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+    flushMove(); // 松手前把最后一个位置补发出去
     if (!wasDrag && app.classList.contains('collapsed')) {
       showFromEdge();
     }
